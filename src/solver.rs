@@ -14,6 +14,65 @@ struct AugmentedMatrix {
     augment: Vec<BigRational>,
 }
 
+impl Display for AugmentedMatrix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut max_widths = Vec::with_capacity(self.width + 1);
+
+        let rows_string: Vec<Vec<_>> = self
+            .rows
+            .iter()
+            .map(|row| row.iter().map(|n| n.to_string()).collect())
+            .collect();
+        let augment_string: Vec<_> = self.augment.iter().map(|n| n.to_string()).collect();
+
+        for x in 0..self.width {
+            let mut max = 0;
+
+            // Should only be unicode characters
+            for len in rows_string.iter().map(|row| row[x].len()) {
+                max = std::cmp::max(max, len)
+            }
+
+            max_widths.push(max);
+        }
+
+        {
+            let mut max = 0;
+
+            // Should only be unicode characters
+            for len in augment_string.iter().map(|s| s.len()) {
+                max = std::cmp::max(max, len)
+            }
+
+            max_widths.push(max);
+        }
+
+        for (row, augment) in rows_string.into_iter().zip(augment_string) {
+            f.write_char('|')?;
+            for _ in 0..augment.len() - max_widths[0] {
+                f.write_char(' ')?;
+            }
+            f.write_str(&row[0])?;
+            for (i, s) in row.iter().enumerate().skip(1) {
+                f.write_char(',')?;
+                for _ in 0..augment.len() - max_widths[i] {
+                    f.write_char(' ')?;
+                }
+                f.write_str(s)?;
+            }
+            f.write_char('|')?;
+            let last_len = max_widths.last().unwrap();
+            for _ in 0..augment.len() - last_len {
+                f.write_char(' ')?;
+            }
+            write!(f, "{augment}")?;
+            writeln!(f, "|")?;
+        }
+
+        Ok(())
+    }
+}
+
 impl AugmentedMatrix {
     pub fn swap_rows(&mut self, a: usize, b: usize) {
         assert!(a < self.height);
