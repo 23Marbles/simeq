@@ -36,7 +36,7 @@ impl FromStr for Equation {
                 name: &str,
             ) {
                 if let Some(var_coefficient) = variables.get_mut(name) {
-                    *var_coefficient *= coefficient;
+                    *var_coefficient += coefficient;
                 } else {
                     variables.insert(name.to_string(), coefficient);
                 }
