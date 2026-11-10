@@ -1,6 +1,5 @@
 use std::{
-    fmt::{Display, Write},
-    ops::Neg,
+    fmt::{Display, Write}, iter, ops::Neg,
 };
 
 use num::{BigRational, Zero};
@@ -47,27 +46,59 @@ impl Display for AugmentedMatrix {
             max_widths.push(max);
         }
 
-        for (row, augment) in rows_string.into_iter().zip(augment_string) {
-            f.write_char('|')?;
-            for _ in 0..augment.len() - max_widths[0] {
-                f.write_char(' ')?;
-            }
-            f.write_str(&row[0])?;
-            for (i, s) in row.iter().enumerate().skip(1) {
-                f.write_char(',')?;
-                for _ in 0..augment.len() - max_widths[i] {
-                    f.write_char(' ')?;
-                }
-                f.write_str(s)?;
-            }
-            f.write_char('|')?;
-            let last_len = max_widths.last().unwrap();
-            for _ in 0..augment.len() - last_len {
-                f.write_char(' ')?;
-            }
-            write!(f, "{augment}")?;
-            writeln!(f, "|")?;
+        fn padding_string(len: usize) -> String {
+            String::from_iter(iter::repeat_n(' ', len))
         }
+        fn write_padded(width: usize, s: String) -> String {
+            let mut res = padding_string(width - s.len());
+            res.push_str(&s);
+
+            debug_assert_eq!(res.len(), width);
+
+            res
+        }
+        let mut write_row =
+            |left: char, mid: char, right: char, newline: bool, row: Vec<String>, augment: String| {
+                write!(
+                    f,
+                    "{left} {} {mid} {} {right}",
+                    {
+                        iter::zip(row, max_widths.iter())
+                            .map(|(s, width)| write_padded(*width, s))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    },
+                    write_padded(*max_widths.last().unwrap(), augment)
+                )?;
+
+                if newline {
+                    f.write_char('\n')?;
+                }
+
+                Ok(())
+            };
+
+        let mut rows_iter = iter::zip(rows_string, augment_string);
+
+        let first_row = rows_iter.next();
+
+        let Some(last_row) = rows_iter.next_back() else {
+            return if let Some((row, augment)) = first_row {
+                write_row('[', '|', ']', false, row, augment)
+            } else {
+                f.write_str("[  |  ]")
+            }
+        };
+
+        let first_row = first_row.expect("Cannot have an end without a start");
+
+        write_row('⎡', '⎢', '⎤', true, first_row.0, first_row.1)?;
+
+        for (row, augment) in rows_iter {
+            write_row('⎢', '⎢', '⎥', true, row, augment)?;
+        }
+
+        write_row('⎣', '⎢', '⎦', false, last_row.0, last_row.1)?;
 
         Ok(())
     }
