@@ -4,13 +4,33 @@ use std::{
 
 use num::{BigRational, Zero};
 
-struct AugmentedMatrix {
+use crate::Equation;
+
+#[derive(Default, Clone)]
+pub struct AugmentedMatrix {
     height: usize,
     width: usize,
 
     rows: Vec<Vec<BigRational>>,
     /// height
     augment: Vec<BigRational>,
+}
+
+impl AugmentedMatrix {
+    pub fn add_column(&mut self) {
+        self.width += 1;
+
+        for row in &mut self.rows {
+            row.push(BigRational::ZERO);
+        }
+    }
+
+    pub fn add_row(&mut self, row: Vec<BigRational>, sum: BigRational) {
+        self.height += 1;
+
+        self.rows.push(row);
+        self.augment.push(sum);
+    }
 }
 
 impl Display for AugmentedMatrix {
@@ -137,7 +157,7 @@ impl AugmentedMatrix {
         *dst += mul * &*src;
     }
 
-    pub fn reorder(&mut self) {
+    pub fn reorder_triangle(&mut self) {
         let mut leading_zeros = self
             .rows
             .iter()
@@ -162,7 +182,7 @@ impl AugmentedMatrix {
 
     pub fn row_echelon_form(&mut self) {
         for x in 0..self.width {
-            let Some(lower) = 0usize
+            let Some(lower) = x
                 .checked_add(1)
                 .and_then(|n| (n < self.height).then_some(n))
             else {
@@ -183,17 +203,53 @@ impl AugmentedMatrix {
     }
 }
 
-pub struct EquationMatrix {
+/// Ax = b
+pub struct LinearSystem {
     height: usize,
     width: usize,
 
+    // A and b
     augmented_matrix: AugmentedMatrix,
 
-    /// width
+    /// The variables
+    // x.len() == width
     x: Vec<String>,
 }
 
-impl EquationMatrix {
+impl LinearSystem {
+    pub fn from_equation_vec(vec: Vec<Equation>) -> Self {
+        let mut variables = Vec::new();
+
+        let mut augmented_matrix = AugmentedMatrix::default();
+
+        for equation in vec {
+            let Equation { variables: mut eq_variables, sum } = equation;
+
+            let mut row = Vec::new();
+
+            for name in &variables {
+                row.push(eq_variables.remove(name).unwrap_or(BigRational::ZERO));
+            }
+
+            for (name, value) in eq_variables.into_iter() {
+                variables.push(name);
+
+                augmented_matrix.add_column();
+                row.push(value);
+            }
+
+            augmented_matrix.add_row(row, sum);
+        }
+
+        Self { height: augmented_matrix.height, width: augmented_matrix.width, augmented_matrix, x: variables }
+    }
+}
+
+impl LinearSystem {
+    pub fn augmented_matrix(&self) -> &AugmentedMatrix {
+        &self.augmented_matrix
+    }
+
     /// https://en.wikipedia.org/wiki/Gaussian_elimination
     pub fn solve() {}
 }

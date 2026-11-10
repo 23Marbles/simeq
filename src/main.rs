@@ -2,6 +2,8 @@ use std::{collections::HashMap, io::stdin, str::FromStr};
 
 use num::BigRational;
 
+use crate::solver::LinearSystem;
+
 mod parser;
 mod solver;
 
@@ -31,5 +33,17 @@ fn main() {
         buf.clear();
     }
 
-    println!("{equations:?}");
+    let linear_system = LinearSystem::from_equation_vec(equations);
+
+    let mut matrix = linear_system.augmented_matrix().clone();
+
+    println!("Augmented matrix:\n{}", matrix);
+
+    matrix.reorder_triangle();
+
+    println!("Augmented matrix:\n{}", matrix);
+
+    matrix.row_echelon_form();
+
+    println!("Augmented matrix:\n{}", matrix);
 }
