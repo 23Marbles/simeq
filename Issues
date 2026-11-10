@@ -1,0 +1,14 @@
+Pivot ordering is fragile:
+
+reorder_triangle only sorts based on “count of leading zeros”, not actual pivot columns.
+That is not a reliable way to establish a valid echelon ordering. The elimination step assumes each pivot row is in the right place, but this sort does not guarantee that for general matrices.
+In other words, the algorithm depends on a stronger invariant than the code actually enforces.
+The solver is only doing forward elimination, not solving:
+
+row_echelon_form() only eliminates entries below the pivot; it does not produce a final variable solution.
+solve() is still empty, so the code does not actually compute the unknowns yet. You need either back-substitution or full reduced-row-echelon form to extract the solution.
+Variable ordering is non-deterministic:
+
+In src/solver.rs, LinearSystem::from_equation_vec iterates eq_variables.into_iter() from a HashMap.
+That means column order is not stable across runs.
+This is not always fatal, but it makes the matrix layout inconsistent and can make debugging or solution reconstruction much harder.
