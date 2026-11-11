@@ -1,5 +1,3 @@
-use std::ops::Neg;
-
 use num::{BigRational, Signed, Zero};
 
 use crate::solver::augmented_matrix::column_iter::ColumnIter;
@@ -53,7 +51,7 @@ mod column_iter {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct AugmentedMatrix {
     height: usize,
     width: usize,

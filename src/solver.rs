@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, str::FromStr};
 
 use num::BigRational;
 
@@ -8,7 +8,7 @@ pub mod augmented_matrix;
 mod display;
 
 /// Ax = b
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinearSystem {
     height: usize,
     width: usize,
@@ -85,5 +85,76 @@ impl LinearSystem {
         self.augmented_matrix.reduced_row_echelon_form();
 
         todo!()
+    }
+}
+
+impl FromStr for LinearSystem {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let vec: Vec<_> = s.lines().map(|s| Equation::from_str(s)).collect::<Result<_, _>>()?;
+
+        Ok(Self::from_equation_vec(vec))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use crate::solver::LinearSystem;
+    
+    #[test]
+    fn rerunning_ref_causes_no_change() {
+        let mut system = LinearSystem::from_str("2x - 3y +  z + 4w - 2v       = 17
+-x + 2y + 3z -  w + 5u - v  = -9
+3x +  y - 2z + 2w + u + 3v  = 20
+4x - 2y +  z - 3w + 2u - v = 2
+-x -  y + 4z +  w - 3u + 2v = -12
+2x - 3y +  z + 4w - 2v      = 17").unwrap();
+
+        system.row_echelon_form();
+
+        let v1 = system.clone();
+
+        system.row_echelon_form();
+
+        assert_eq!(v1, system)
+    }
+
+    #[test]
+    fn rerunning_rref_causes_no_change() {
+        let mut system = LinearSystem::from_str("2x - 3y +  z + 4w - 2v       = 17
+-x + 2y + 3z -  w + 5u - v  = -9
+3x +  y - 2z + 2w + u + 3v  = 20
+4x - 2y +  z - 3w + 2u - v = 2
+-x -  y + 4z +  w - 3u + 2v = -12
+2x - 3y +  z + 4w - 2v      = 17").unwrap();
+
+        system.reduced_row_echelon_form();
+
+        let v1 = system.clone();
+
+        system.reduced_row_echelon_form();
+
+        assert_eq!(v1, system)
+    }
+
+    #[test]
+    fn rerunning_ref_after_rref_causes_no_change() {
+        let mut system = LinearSystem::from_str("2x - 3y +  z + 4w - 2v       = 17
+-x + 2y + 3z -  w + 5u - v  = -9
+3x +  y - 2z + 2w + u + 3v  = 20
+4x - 2y +  z - 3w + 2u - v = 2
+-x -  y + 4z +  w - 3u + 2v = -12
+2x - 3y +  z + 4w - 2v      = 17").unwrap();
+
+        system.reduced_row_echelon_form();
+
+        let v1 = system.clone();
+
+        system.row_echelon_form();
+
+        assert_eq!(v1, system)
     }
 }
