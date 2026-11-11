@@ -1,5 +1,7 @@
 use std::{
-    fmt::{Display, Write}, iter, ops::Neg,
+    fmt::{Display, Write},
+    iter,
+    ops::Neg,
 };
 
 use num::{BigRational, Zero};
@@ -124,26 +126,30 @@ impl Display for AugmentedMatrix {
 
             res
         }
-        let mut write_row =
-            |left: char, mid: char, right: char, newline: bool, row: Vec<String>, augment: String| {
-                write!(
-                    f,
-                    "{left} {} {mid} {} {right}",
-                    {
-                        iter::zip(row, max_widths.iter())
-                            .map(|(s, width)| write_padded(*width, s))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    },
-                    write_padded(*max_widths.last().unwrap(), augment)
-                )?;
+        let mut write_row = |left: char,
+                             mid: char,
+                             right: char,
+                             newline: bool,
+                             row: Vec<String>,
+                             augment: String| {
+            write!(
+                f,
+                "{left} {} {mid} {} {right}",
+                {
+                    iter::zip(row, max_widths.iter())
+                        .map(|(s, width)| write_padded(*width, s))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                },
+                write_padded(*max_widths.last().unwrap(), augment)
+            )?;
 
-                if newline {
-                    f.write_char('\n')?;
-                }
+            if newline {
+                f.write_char('\n')?;
+            }
 
-                Ok(())
-            };
+            Ok(())
+        };
 
         let mut rows_iter = iter::zip(rows_string, augment_string);
 
@@ -154,7 +160,7 @@ impl Display for AugmentedMatrix {
                 write_row('[', '|', ']', false, row, augment)
             } else {
                 f.write_str("[  |  ]")
-            }
+            };
         };
 
         let first_row = first_row.expect("Cannot have an end without a start");
@@ -270,7 +276,10 @@ impl LinearSystem {
         let mut augmented_matrix = AugmentedMatrix::default();
 
         for equation in vec {
-            let Equation { variables: mut eq_variables, sum } = equation;
+            let Equation {
+                variables: mut eq_variables,
+                sum,
+            } = equation;
 
             let mut row = Vec::new();
 
@@ -288,7 +297,12 @@ impl LinearSystem {
             augmented_matrix.add_row(row, sum);
         }
 
-        Self { height: augmented_matrix.height, width: augmented_matrix.width, augmented_matrix, x: variables }
+        Self {
+            height: augmented_matrix.height,
+            width: augmented_matrix.width,
+            augmented_matrix,
+            x: variables,
+        }
     }
 }
 
