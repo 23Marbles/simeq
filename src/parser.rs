@@ -51,7 +51,7 @@ impl FromStr for Equation {
             if let Some(name) = var {
                 handle_var(&mut me.variables, coefficient, name);
             } else {
-                me.sum += coefficient
+                me.sum -= coefficient
             }
         }
 

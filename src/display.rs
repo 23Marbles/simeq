@@ -182,11 +182,8 @@ impl From<AugmentedMatrix> for DisplayMatrix {
 
 impl From<LinearSystem> for DisplayMatrix {
     fn from(value: LinearSystem) -> Self {
-        let LinearSystem {
-            augmented_matrix,
-            mut x,
-            ..
-        } = value;
+        let mut x = value.variables().clone();
+        let augmented_matrix = value.augmented_matrix().clone();
 
         let mut display_matrix: DisplayMatrix = augmented_matrix.into();
 

@@ -6,8 +6,10 @@ use crate::solver::LinearSystem;
 
 mod parser;
 mod solver;
+mod display;
 
-#[derive(Debug, Default)]
+/// x + y + z = sum
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 struct Equation {
     variables: HashMap<String, BigRational>,
     sum: BigRational,

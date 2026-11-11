@@ -2,7 +2,7 @@ use num::{BigRational, Signed, Zero};
 
 use crate::solver::augmented_matrix::column_iter::ColumnIter;
 
-mod column_iter {
+pub mod column_iter {
     pub struct ColumnIter<'a, T> {
         current_column: usize,
 
@@ -183,17 +183,23 @@ impl AugmentedMatrix {
         }
     }
 
-    pub fn reduced_row_echelon_form(&mut self) {
+    /// # Returns
+    /// A vector of pivot columns
+    pub fn reduced_row_echelon_form(&mut self) -> Vec<usize> {
         self.row_echelon_form();
 
         fn find_pivot(row: &[BigRational]) -> Option<usize> {
             row.iter().position(|v| !v.is_zero())
         }
 
+        let mut pivot_columns = Vec::with_capacity(self.width);
+
         for pivot_y in (0..self.height).rev() {
             let Some(x) = find_pivot(&self.rows[pivot_y]) else {
                 continue;
             };
+
+            pivot_columns.push(x);
 
             let pivot_val = self.rows[pivot_y][x].clone();
 
@@ -205,5 +211,7 @@ impl AugmentedMatrix {
 
             self.divide_row(pivot_y, pivot_val.clone());
         }
+
+        pivot_columns
     }
 }
