@@ -44,7 +44,7 @@ impl LinearSystem {
                 row.push(value);
             }
 
-            augmented_matrix.add_row(row, sum);
+            augmented_matrix.add_row(row, -sum);
         }
 
         Self {
