@@ -4,9 +4,9 @@ use num::BigRational;
 
 use crate::solver::LinearSystem;
 
+mod display;
 mod parser;
 mod solver;
-mod display;
 
 /// x + y + z = sum
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -48,4 +48,8 @@ fn main() {
     linear_system.reduced_row_echelon_form();
 
     println!("Reduced Row Echelon Form Linear system:\n{}", linear_system);
+
+    let solution = linear_system.solve();
+
+    println!("Solution\n{solution}")
 }

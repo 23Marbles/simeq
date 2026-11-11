@@ -4,7 +4,12 @@ use std::{
     ops::Range,
 };
 
-use crate::solver::{LinearSystem, augmented_matrix::AugmentedMatrix};
+use num::{BigRational, One};
+
+use crate::{
+    Equation,
+    solver::{LinearSystem, Solution, augmented_matrix::AugmentedMatrix},
+};
 
 pub struct DisplayMatrix {
     brackets_range: Range<usize>,
@@ -208,5 +213,112 @@ impl Display for AugmentedMatrix {
 impl Display for LinearSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         DisplayMatrix::from(self.clone()).fmt(f)
+    }
+}
+
+impl Display for Equation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            {
+                let s = self
+                    .variables
+                    .iter()
+                    .map(|(c, v)| format!("{c}{v}"))
+                    .collect::<Vec<_>>()
+                    .join(" + ");
+                (!s.is_empty())
+                    .then_some(format!("{s} = "))
+                    .unwrap_or_default()
+            },
+            self.sum
+        )
+    }
+}
+
+impl Display for Solution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Solution::Unique(unique_variables) => {
+                write!(f, "Unique Solution")?;
+
+                for (name, value) in unique_variables {
+                    write!(f, "\n{name} = {value}")?;
+                }
+
+                Ok(())
+            },
+            Solution::Infinite {
+                unique_variables,
+                pivots,
+                free_variables,
+            } => {
+                let mut has_started = false;
+
+                if !unique_variables.is_empty() {
+                    write!(f, "Unique Variables")?;
+
+                    for (name, value) in unique_variables {
+                        write!(f, "\n{name} = {value}")?;
+                    }
+
+                    has_started = true;
+                }
+
+                if !pivots.is_empty() {
+                    if has_started {
+                        f.write_char('\n')?;
+                    }
+
+                    write!(f, "Expressions")?;
+
+                    for (name, equation) in pivots {
+                        let Equation { variables, sum } = equation;
+
+                        let variable_iter: Vec<_> = variables
+                            .iter()
+                            .filter(|(var_name, _)| *var_name != name)
+                            .map(|(var_name, coefficient)| {
+                                format!(
+                                    "{}{}",
+                                    match coefficient {
+                                        one if one.is_one() => String::new(),
+                                        neg_one if neg_one == &-BigRational::ONE => "-".to_string(),
+                                        c => c.to_string(),
+                                    },
+                                    var_name
+                                )
+                            })
+                            .collect();
+
+                        write!(f, "\n{name} = {} + {sum}", variable_iter.join(" + "))?;
+                    }
+
+                    has_started = true;
+                }
+
+                if !free_variables.is_empty() {
+                    if has_started {
+                        f.write_char('\n')?;
+                    }
+
+                    write!(f, "Free Variables")?;
+
+                    for name in free_variables {
+                        write!(f, "\nname")?;
+                    }
+
+                    has_started = true;
+                }
+
+                if !has_started {
+                    write!(f, "Empty infinte solution, this is a bug. Oops.")?;
+                }
+
+                Ok(())
+            }
+            Solution::None => write!(f, "No solution"),
+        }
     }
 }

@@ -240,8 +240,6 @@ mod test {
         assert_eq!(v1, system)
     }
 
-
-
     #[test]
     fn rerunning_solve_produces_same_result() {
         let mut system = LinearSystem::from_str(
