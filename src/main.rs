@@ -25,9 +25,11 @@ fn main() {
             break;
         }
 
-        match Equation::from_str(&buf) {
-            Ok(eq) => equations.push(eq),
-            Err(err_msg) => println!("Parse error: {err_msg}"),
+        for line in buf.lines() {
+            match Equation::from_str(line.trim()) {
+                Ok(eq) => equations.push(eq),
+                Err(err_msg) => println!("Parse error: {err_msg}"),
+            }
         }
 
         buf.clear();
