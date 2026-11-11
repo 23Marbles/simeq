@@ -39,7 +39,7 @@ fn main() {
 
     println!("Linear system:\n{}", linear_system);
 
-    linear_system.row_echelon_form();
+    linear_system.reduced_row_echelon_form();
 
-    println!("Linear system:\n{}", linear_system);
+    println!("Reduced Row Echelon Form Linear system:\n{}", linear_system);
 }

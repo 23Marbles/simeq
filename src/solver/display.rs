@@ -117,11 +117,23 @@ impl Display for DisplayMatrix {
         }
 
         if !self.brackets_range.is_empty() {
-            write_row('⎡', '⎢', '⎤', true, rows_iter.next().expect("Just tRUST me bro 😉"))?;
+            write_row(
+                '⎡',
+                '⎢',
+                '⎤',
+                true,
+                rows_iter.next().expect("Just tRUST me bro 😉"),
+            )?;
 
             if let Some(middle_len) = self.brackets_range.len().checked_sub(2) {
                 for _ in 0..middle_len {
-                    write_row('⎢', '⎢', '⎥', true, rows_iter.next().expect("Just tRUST me bro 😉"))?;
+                    write_row(
+                        '⎢',
+                        '⎢',
+                        '⎥',
+                        true,
+                        rows_iter.next().expect("Just tRUST me bro 😉"),
+                    )?;
                 }
             }
 
@@ -133,7 +145,7 @@ impl Display for DisplayMatrix {
                 return Ok(());
             }
         }
-        
+
         for row in rows_iter {
             write_row(' ', ' ', ' ', true, row)?;
         }
@@ -170,7 +182,11 @@ impl From<AugmentedMatrix> for DisplayMatrix {
 
 impl From<LinearSystem> for DisplayMatrix {
     fn from(value: LinearSystem) -> Self {
-        let LinearSystem { augmented_matrix, mut x, .. } = value;
+        let LinearSystem {
+            augmented_matrix,
+            mut x,
+            ..
+        } = value;
 
         let mut display_matrix: DisplayMatrix = augmented_matrix.into();
 

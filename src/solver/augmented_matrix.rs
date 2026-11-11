@@ -96,6 +96,7 @@ impl AugmentedMatrix {
     }
 }
 
+/// Gaussian elimination operations
 impl AugmentedMatrix {
     pub fn swap_rows(&mut self, a: usize, b: usize) {
         assert!(a < self.height);
@@ -115,43 +116,31 @@ impl AugmentedMatrix {
         *self.augment.get_mut(row).unwrap() *= mul;
     }
 
-    pub fn add_rows(&mut self, pivot: usize, mul: BigRational, target: usize) {
+    pub fn divide_row(&mut self, row: usize, div: BigRational) {
+        self.multiply_row(row, BigRational::ONE / div);
+    }
+
+    pub fn add_rows(&mut self, pivot: usize, factor: BigRational, target: usize) {
         assert!(pivot < self.height);
         assert!(target < self.height);
         assert_ne!(pivot, target, "Use multiply row instead");
 
         let [src, dst] = self.rows.get_disjoint_mut([pivot, target]).unwrap();
         for (src, dst) in src.iter().zip(dst) {
-            *dst += mul.clone() * &*src;
+            *dst += factor.clone() * &*src;
         }
 
         let [src, dst] = self.augment.get_disjoint_mut([pivot, target]).unwrap();
-        *dst += mul * &*src;
+        *dst += factor * &*src;
     }
 
-    pub fn reorder_triangle(&mut self) {
-        let mut leading_zeros = self
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(i, row)| {
-                let leading_zeros = row
-                    .iter()
-                    .enumerate()
-                    .find(|(_, n)| !n.is_zero())
-                    .map_or(row.len(), |(i, _)| i);
-
-                (i, leading_zeros)
-            })
-            .collect::<Vec<_>>();
-
-        leading_zeros.sort_by(|(_, zeros1), (_, zeros2)| zeros1.cmp(zeros2));
-
-        for (dst, (src, _)) in leading_zeros.into_iter().enumerate() {
-            self.swap_rows(src, dst);
-        }
+    pub fn sub_row(&mut self, pivot: usize, factor: BigRational, target: usize) {
+        self.add_rows(pivot, -factor, target);
     }
+}
 
+/// Gaussian elimination
+impl AugmentedMatrix {
     pub fn row_echelon_form(&mut self) {
         let mut current_pivot_y = 0;
 
@@ -189,10 +178,34 @@ impl AugmentedMatrix {
 
                 let mul = numer / &pivot_val;
 
-                self.add_rows(current_pivot_y, mul.neg(), y);
+                self.sub_row(current_pivot_y, mul, y);
             }
 
             current_pivot_y += 1;
+        }
+    }
+
+    pub fn reduced_row_echelon_form(&mut self) {
+        self.row_echelon_form();
+
+        fn find_pivot(row: &[BigRational]) -> Option<usize> {
+            row.iter().position(|v| !v.is_zero())
+        }
+
+        for pivot_y in (0..self.height).rev() {
+            let Some(x) = find_pivot(&self.rows[pivot_y]) else {
+                continue;
+            };
+
+            let pivot_val = self.rows[pivot_y][x].clone();
+
+            self.divide_row(pivot_y, pivot_val.clone());
+
+            for row_y in 0..pivot_y {
+                let factor = &self.rows[row_y][x] / &pivot_val;
+
+                self.sub_row(pivot_y, factor, row_y);
+            }
         }
     }
 }
