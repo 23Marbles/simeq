@@ -4,7 +4,7 @@ use std::{
     ops::Neg,
 };
 
-use num::{BigRational, Zero};
+use num::{BigRational, Signed, Zero};
 
 use crate::Equation;
 
@@ -234,8 +234,31 @@ impl AugmentedMatrix {
     }
 
     pub fn row_echelon_form(&mut self) {
+        let mut current_pivot_y = 0;
+
         for x in 0..self.width {
-            let Some(lower) = x
+            let column = ColumnIter::new(&self.rows)
+                .nth(x)
+                .expect("Should have count() of width");
+
+            let Some((pivot_row, pivot_val)) = column
+                .into_iter()
+                .enumerate()
+                .skip(current_pivot_y)
+                .max_by(|(_, v1), (_, v2)| v1.abs().cmp(&v2.abs()))
+            else {
+                break;
+            };
+
+            let pivot_val = pivot_val.clone();
+
+            if pivot_val.is_zero() {
+                continue;
+            }
+
+            self.swap_rows(current_pivot_y, pivot_row);
+
+            let Some(lower) = current_pivot_y
                 .checked_add(1)
                 .and_then(|n| (n < self.height).then_some(n))
             else {
@@ -243,15 +266,14 @@ impl AugmentedMatrix {
             };
 
             for y in lower..self.height {
-                let mul = {
-                    let numer = &self.rows[y][x];
-                    let denom = &self.rows[x][x];
+                let numer = &self.rows[y][x];
 
-                    (numer / denom).neg()
-                };
+                let mul = numer / &pivot_val;
 
-                self.add_rows(x, mul, y);
+                self.add_rows(current_pivot_y, mul.neg(), y);
             }
+
+            current_pivot_y += 1;
         }
     }
 }
