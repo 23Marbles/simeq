@@ -18,15 +18,15 @@ pub struct AugmentedMatrix {
     augment: Vec<BigRational>,
 }
 
-pub struct ColumnIter<T> {
+pub struct ColumnIter<'a, T> {
     current_column: usize,
 
     width: usize,
-    rows: Vec<Vec<T>>,
+    rows: &'a Vec<Vec<T>>,
 }
 
-impl<T> ColumnIter<T> {
-    pub fn new(rows: Vec<Vec<T>>) -> Self {
+impl<'a, T> ColumnIter<'a, T> {
+    pub fn new(rows: &'a Vec<Vec<T>>) -> Self {
         let width = rows.get(0).map_or_default(|row| row.len());
 
         for row in rows.iter().skip(1) {
@@ -45,8 +45,8 @@ impl<T> ColumnIter<T> {
     }
 }
 
-impl<T: Clone> Iterator for ColumnIter<T> {
-    type Item = Vec<T>;
+impl<'a, T: Clone> Iterator for ColumnIter<'a, T> {
+    type Item = Vec<&'a T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_column == self.width {
@@ -56,7 +56,7 @@ impl<T: Clone> Iterator for ColumnIter<T> {
         let res = self
             .rows
             .iter()
-            .map(|row| row[self.current_column].clone())
+            .map(|row| &row[self.current_column])
             .collect();
 
         self.current_column += 1;
