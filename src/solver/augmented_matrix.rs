@@ -199,13 +199,13 @@ impl AugmentedMatrix {
 
             let pivot_val = self.rows[pivot_y][x].clone();
 
-            self.divide_row(pivot_y, pivot_val.clone());
-
             for row_y in 0..pivot_y {
                 let factor = &self.rows[row_y][x] / &pivot_val;
 
                 self.sub_row(pivot_y, factor, row_y);
             }
+
+            self.divide_row(pivot_y, pivot_val.clone());
         }
     }
 }
