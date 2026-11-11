@@ -3,6 +3,7 @@ use num::BigRational;
 use crate::{Equation, solver::augmented_matrix::AugmentedMatrix};
 
 pub mod augmented_matrix;
+mod display;
 
 /// Ax = b
 pub struct LinearSystem {
