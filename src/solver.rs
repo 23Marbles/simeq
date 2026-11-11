@@ -6,6 +6,7 @@ pub mod augmented_matrix;
 mod display;
 
 /// Ax = b
+#[derive(Debug, Clone)]
 pub struct LinearSystem {
     height: usize,
     width: usize,
@@ -58,6 +59,9 @@ impl LinearSystem {
 impl LinearSystem {
     pub fn augmented_matrix(&self) -> &AugmentedMatrix {
         &self.augmented_matrix
+    }
+    pub fn row_echelon_form(&mut self) {
+        self.augmented_matrix.row_echelon_form();
     }
 
     /// https://en.wikipedia.org/wiki/Gaussian_elimination

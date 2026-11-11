@@ -53,7 +53,7 @@ mod column_iter {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct AugmentedMatrix {
     height: usize,
     width: usize,
@@ -115,17 +115,17 @@ impl AugmentedMatrix {
         *self.augment.get_mut(row).unwrap() *= mul;
     }
 
-    pub fn add_rows(&mut self, to_add: usize, mul: BigRational, target: usize) {
-        assert!(to_add < self.height);
+    pub fn add_rows(&mut self, pivot: usize, mul: BigRational, target: usize) {
+        assert!(pivot < self.height);
         assert!(target < self.height);
-        assert_ne!(to_add, target, "Use multiply row instead");
+        assert_ne!(pivot, target, "Use multiply row instead");
 
-        let [src, dst] = self.rows.get_disjoint_mut([to_add, target]).unwrap();
-        for (src, dst) in src.iter_mut().zip(dst) {
+        let [src, dst] = self.rows.get_disjoint_mut([pivot, target]).unwrap();
+        for (src, dst) in src.iter().zip(dst) {
             *dst += mul.clone() * &*src;
         }
 
-        let [src, dst] = self.augment.get_disjoint_mut([to_add, target]).unwrap();
+        let [src, dst] = self.augment.get_disjoint_mut([pivot, target]).unwrap();
         *dst += mul * &*src;
     }
 

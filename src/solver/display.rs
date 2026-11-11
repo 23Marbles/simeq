@@ -1,101 +1,199 @@
 use std::{
     fmt::{Display, Write},
     iter,
+    ops::Range,
 };
 
-use crate::solver::augmented_matrix::AugmentedMatrix;
+use crate::solver::{LinearSystem, augmented_matrix::AugmentedMatrix};
 
-impl Display for AugmentedMatrix {
+pub struct DisplayMatrix {
+    brackets_range: Range<usize>,
+
+    width: usize,
+    height: usize,
+
+    has_augment: bool,
+    rows_string: Vec<Vec<String>>,
+}
+
+impl Display for DisplayMatrix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut max_widths = Vec::with_capacity(self.width() + 1);
+        assert!(self.brackets_range.end >= self.brackets_range.start);
+        assert!(self.brackets_range.end <= self.height);
 
-        let rows_string: Vec<Vec<_>> = self
-            .rows()
-            .iter()
-            .map(|row| row.iter().map(|n| n.to_string()).collect())
-            .collect();
-        let augment_string: Vec<_> = self.augment().iter().map(|n| n.to_string()).collect();
-
-        for x in 0..self.width() {
+        let max_widths = Vec::from_iter((0..self.width).map(|x| {
             let mut max = 0;
 
             // Should only be unicode characters
-            for len in rows_string.iter().map(|row| row[x].len()) {
+            for len in self.rows_string.iter().map(|row| row[x].len()) {
                 max = std::cmp::max(max, len)
             }
 
-            max_widths.push(max);
-        }
+            max
+        }));
 
-        {
-            let mut max = 0;
-
-            // Should only be unicode characters
-            for len in augment_string.iter().map(|s| s.len()) {
-                max = std::cmp::max(max, len)
-            }
-
-            max_widths.push(max);
-        }
-
-        fn padding_string(len: usize) -> String {
+        fn whitespace_string(len: usize) -> String {
             String::from_iter(iter::repeat_n(' ', len))
         }
-        fn write_padded(width: usize, s: String) -> String {
-            let mut res = padding_string(width - s.len());
-            res.push_str(&s);
+        fn write_padded(width: usize, s: &str) -> String {
+            let mut res = whitespace_string(width - s.len());
+            res.push_str(s);
 
             debug_assert_eq!(res.len(), width);
 
             res
         }
-        let mut write_row = |left: char,
-                             mid: char,
-                             right: char,
-                             newline: bool,
-                             row: Vec<String>,
-                             augment: String| {
-            write!(
-                f,
-                "{left} {} {mid} {} {right}",
-                {
-                    iter::zip(row, max_widths.iter())
+        let mut write_row =
+            |left: char, mid: char, right: char, newline: bool, row: &Vec<String>| {
+                write!(
+                    f,
+                    "{left} {} {}{right}",
+                    {
+                        iter::zip(
+                            {
+                                if self.has_augment && !row.is_empty() {
+                                    &row[..row.len() - 1]
+                                } else {
+                                    &row
+                                }
+                            },
+                            max_widths.iter(),
+                        )
                         .map(|(s, width)| write_padded(*width, s))
                         .collect::<Vec<_>>()
                         .join(", ")
-                },
-                write_padded(*max_widths.last().unwrap(), augment)
-            )?;
+                    },
+                    if self.has_augment {
+                        format!(
+                            "{} {} ",
+                            mid,
+                            write_padded(
+                                *max_widths.last().unwrap_or(&0),
+                                row.last().unwrap_or(&String::new())
+                            )
+                        )
+                    } else {
+                        String::new()
+                    }
+                )?;
 
-            if newline {
-                f.write_char('\n')?;
-            }
+                if newline {
+                    f.write_char('\n')?;
+                }
 
-            Ok(())
-        };
+                Ok(())
+            };
 
-        let mut rows_iter = iter::zip(rows_string, augment_string);
-
-        let first_row = rows_iter.next();
-
-        let Some(last_row) = rows_iter.next_back() else {
-            return if let Some((row, augment)) = first_row {
-                write_row('[', '|', ']', false, row, augment)
+        if self.rows_string.len() == 0 {
+            return if self.has_augment {
+                f.write_str("[  ]")
             } else {
                 f.write_str("[  |  ]")
             };
         };
 
-        let first_row = first_row.expect("Cannot have an end without a start");
+        let mut rows_iter = self.rows_string.iter();
 
-        write_row('⎡', '⎢', '⎤', true, first_row.0, first_row.1)?;
+        let last_row = rows_iter.next_back().expect("Already checked len != 0");
 
-        for (row, augment) in rows_iter {
-            write_row('⎢', '⎢', '⎥', true, row, augment)?;
+        for _ in 0..self.brackets_range.start {
+            let Some(row) = rows_iter.next() else {
+                write_row(' ', ' ', ' ', true, last_row)?;
+
+                return Ok(());
+            };
+
+            write_row(' ', ' ', ' ', true, row)?;
         }
 
-        write_row('⎣', '⎢', '⎦', false, last_row.0, last_row.1)?;
+        if self.brackets_range.len() == 1 {
+            let row = rows_iter.next();
+
+            write_row('[', '|', ']', row.is_some(), row.unwrap_or(last_row))?;
+
+            if row.is_none() {
+                return Ok(());
+            }
+        }
+
+        if !self.brackets_range.is_empty() {
+            write_row('⎡', '⎢', '⎤', true, rows_iter.next().expect("Just tRUST me bro 😉"))?;
+
+            if let Some(middle_len) = self.brackets_range.len().checked_sub(2) {
+                for _ in 0..middle_len {
+                    write_row('⎢', '⎢', '⎥', true, rows_iter.next().expect("Just tRUST me bro 😉"))?;
+                }
+            }
+
+            let row = rows_iter.next();
+
+            write_row('⎣', '⎢', '⎦', row.is_some(), row.unwrap_or(last_row))?;
+
+            if row.is_none() {
+                return Ok(());
+            }
+        }
+        
+        for row in rows_iter {
+            write_row(' ', ' ', ' ', true, row)?;
+        }
+
+        write_row(' ', ' ', ' ', false, last_row)?;
 
         Ok(())
+    }
+}
+
+impl From<AugmentedMatrix> for DisplayMatrix {
+    fn from(value: AugmentedMatrix) -> Self {
+        let rows_string: Vec<Vec<_>> = value
+            .rows()
+            .iter()
+            .zip(value.augment())
+            .map(|(row, augment)| {
+                let mut row: Vec<String> = row.iter().map(|n| n.to_string()).collect();
+                row.push(augment.to_string());
+
+                row
+            })
+            .collect();
+
+        Self {
+            brackets_range: 0..rows_string.len(),
+            width: value.width() + 1,
+            height: value.height(),
+            has_augment: true,
+            rows_string,
+        }
+    }
+}
+
+impl From<LinearSystem> for DisplayMatrix {
+    fn from(value: LinearSystem) -> Self {
+        let LinearSystem { augmented_matrix, mut x, .. } = value;
+
+        let mut display_matrix: DisplayMatrix = augmented_matrix.into();
+
+        x.push(String::new());
+
+        display_matrix.rows_string.insert(0, x);
+        display_matrix.height += 1;
+
+        display_matrix.brackets_range.start += 1;
+        display_matrix.brackets_range.end += 1;
+
+        display_matrix
+    }
+}
+
+impl Display for AugmentedMatrix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        DisplayMatrix::from(self.clone()).fmt(f)
+    }
+}
+
+impl Display for LinearSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        DisplayMatrix::from(self.clone()).fmt(f)
     }
 }

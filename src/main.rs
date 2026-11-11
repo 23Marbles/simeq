@@ -33,17 +33,11 @@ fn main() {
         buf.clear();
     }
 
-    let linear_system = LinearSystem::from_equation_vec(equations);
+    let mut linear_system = LinearSystem::from_equation_vec(equations);
 
-    let mut matrix = linear_system.augmented_matrix().clone();
+    println!("Linear system:\n{}", linear_system);
 
-    println!("Augmented matrix:\n{}", matrix);
+    linear_system.row_echelon_form();
 
-    matrix.reorder_triangle();
-
-    println!("Augmented matrix:\n{}", matrix);
-
-    matrix.row_echelon_form();
-
-    println!("Augmented matrix:\n{}", matrix);
+    println!("Linear system:\n{}", linear_system);
 }
