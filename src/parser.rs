@@ -147,7 +147,8 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
 
                 next_pos = end;
 
-                let mut num = BigRational::from_str(&s[start..next_pos].trim()).map_err(|e| e.to_string())?;
+                let mut num =
+                    BigRational::from_str(&s[start..next_pos].trim()).map_err(|e| e.to_string())?;
 
                 if let Some(('/', start)) = find_next_char(s, next_pos) {
                     let end = s[start..]
@@ -156,14 +157,13 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
 
                     next_pos = end;
 
-                    let denom = BigRational::from_str(&s[start..next_pos].trim()).map_err(|e| e.to_string())?;
+                    let denom = BigRational::from_str(&s[start..next_pos].trim())
+                        .map_err(|e| e.to_string())?;
 
                     num /= denom
                 };
 
-                Token::Num(
-                    num,
-                )
+                Token::Num(num)
             }
             ch if ch.is_ascii_alphabetic() => {
                 let end = s[next_pos..]

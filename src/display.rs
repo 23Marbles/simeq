@@ -11,7 +11,7 @@ use crate::{
     solver::{LinearSystem, Solution, augmented_matrix::AugmentedMatrix},
 };
 
-pub struct DisplayMatrix {
+pub(crate) struct DisplayMatrix {
     brackets_range: Range<usize>,
 
     width: usize,
@@ -252,7 +252,7 @@ impl Display for Solution {
                 }
 
                 Ok(())
-            },
+            }
             Solution::Infinite {
                 unique_variables,
                 pivots,
@@ -324,5 +324,38 @@ impl Display for Solution {
             }
             Solution::None => write!(f, "No solution"),
         }
+    }
+}
+
+impl Equation {
+    pub fn display_in_terms_of_x<'a>(
+        &'a self,
+        var_name: impl AsRef<str>,
+    ) -> Option<EquationInTermsOfX<'a>> {
+        let var_name = self.variables.get_key_value(var_name.as_ref())?.0;
+
+        Some(EquationInTermsOfX(&self, var_name))
+    }
+}
+
+pub struct EquationInTermsOfX<'a>(&'a Equation, &'a String);
+
+impl Display for EquationInTermsOfX<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let x_val = self
+            .0
+            .variables
+            .get(self.1)
+            .expect("Should be checked upon creation");
+
+        let terms: Vec<String> = self
+            .0
+            .variables
+            .iter()
+            .filter_map(|(name, val)| (name != self.1).then_some(format!("{}{name}", -val)))
+            .chain(iter::once(self.0.sum.to_string()))
+            .collect();
+
+        write!(f, "{x_val}{} = {}", self.1, terms.join(" + "))
     }
 }
