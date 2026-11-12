@@ -12,7 +12,7 @@ pub mod column_iter {
 
     impl<'a, T> ColumnIter<'a, T> {
         pub fn new(rows: &'a Vec<Vec<T>>) -> Self {
-            let width = rows.get(0).map_or_default(|row| row.len());
+            let width = rows.first().map_or_default(|row| row.len());
 
             for row in rows.iter().skip(1) {
                 assert_eq!(
@@ -125,7 +125,7 @@ impl AugmentedMatrix {
 
         let [src, dst] = self.rows.get_disjoint_mut([pivot, target]).unwrap();
         for (src, dst) in src.iter().zip(dst) {
-            *dst += factor.clone() * &*src;
+            *dst += factor.clone() * src;
         }
 
         let [src, dst] = self.augment.get_disjoint_mut([pivot, target]).unwrap();

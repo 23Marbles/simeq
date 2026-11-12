@@ -185,7 +185,7 @@ impl FromStr for LinearSystem {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let vec: Vec<_> = s
             .lines()
-            .map(|s| Equation::from_str(s))
+            .map(Equation::from_str)
             .collect::<Result<_, _>>()?;
 
         Ok(Self::from_equation_vec(vec))

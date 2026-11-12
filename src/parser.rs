@@ -63,7 +63,7 @@ impl FromStr for Equation {
                     _ => return Err("Expected `-` or `+`".to_string()),
                 };
 
-                while let Some(_) = tokens.pop_front_if(|tok| matches!(tok, Token::Sub)) {
+                while tokens.pop_front_if(|tok| matches!(tok, Token::Sub)).is_some() {
                     is_neg = !is_neg
                 }
 
@@ -148,7 +148,7 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
                 next_pos = end;
 
                 let mut num =
-                    BigRational::from_str(&s[start..next_pos].trim()).map_err(|e| e.to_string())?;
+                    BigRational::from_str(s[start..next_pos].trim()).map_err(|e| e.to_string())?;
 
                 if let Some(('/', start)) = find_next_char(s, next_pos) {
                     let end = s[start..]
@@ -157,7 +157,7 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
 
                     next_pos = end;
 
-                    let denom = BigRational::from_str(&s[start..next_pos].trim())
+                    let denom = BigRational::from_str(s[start..next_pos].trim())
                         .map_err(|e| e.to_string())?;
 
                     num /= denom
@@ -172,7 +172,7 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
 
                 next_pos = end;
 
-                Token::Var(&s[start..next_pos].trim())
+                Token::Var(s[start..next_pos].trim())
             }
             _ => return Err(format!("Unrecognized token start {next_char}")),
         };

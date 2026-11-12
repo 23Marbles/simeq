@@ -59,7 +59,7 @@ impl Display for DisplayMatrix {
                                 if self.has_augment && !row.is_empty() {
                                     &row[..row.len() - 1]
                                 } else {
-                                    &row
+                                    row
                                 }
                             },
                             max_widths.iter(),
@@ -89,7 +89,7 @@ impl Display for DisplayMatrix {
                 Ok(())
             };
 
-        if self.rows_string.len() == 0 {
+        if self.rows_string.is_empty() {
             return if self.has_augment {
                 f.write_str("[  ]")
             } else {
@@ -334,7 +334,7 @@ impl Equation {
     ) -> Option<EquationInTermsOfX<'a>> {
         let var_name = self.variables.get_key_value(var_name.as_ref())?.0;
 
-        Some(EquationInTermsOfX(&self, var_name))
+        Some(EquationInTermsOfX(self, var_name))
     }
 }
 
