@@ -63,7 +63,10 @@ impl FromStr for Equation {
                     _ => return Err("Expected `-` or `+`".to_string()),
                 };
 
-                while tokens.pop_front_if(|tok| matches!(tok, Token::Sub)).is_some() {
+                while tokens
+                    .pop_front_if(|tok| matches!(tok, Token::Sub))
+                    .is_some()
+                {
                     is_neg = !is_neg
                 }
 

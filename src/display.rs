@@ -278,25 +278,13 @@ impl Display for Solution {
                     write!(f, "Expressions")?;
 
                     for (name, equation) in pivots {
-                        let Equation { variables, sum } = equation;
-
-                        let variable_iter: Vec<_> = variables
-                            .iter()
-                            .filter(|(var_name, _)| *var_name != name)
-                            .map(|(var_name, coefficient)| {
-                                format!(
-                                    "{}{}",
-                                    match coefficient {
-                                        one if one.is_one() => String::new(),
-                                        neg_one if neg_one == &-BigRational::ONE => "-".to_string(),
-                                        c => c.to_string(),
-                                    },
-                                    var_name
-                                )
-                            })
-                            .collect();
-
-                        write!(f, "\n{name} = {} + {sum}", variable_iter.join(" + "))?;
+                        write!(
+                            f,
+                            "\n{}",
+                            equation
+                                .display_in_terms_of_x(name)
+                                .expect("Name should be a variable contained in this equation")
+                        )?;
                     }
 
                     has_started = true;
@@ -348,14 +336,12 @@ impl Display for EquationInTermsOfX<'_> {
             .get(self.1)
             .expect("Should be checked upon creation");
 
-        let terms: Vec<String> = self
-            .0
-            .variables
-            .iter()
-            .filter_map(|(name, val)| (name != self.1).then_some(format!("{}{name}", -val)))
-            .chain(iter::once(self.0.sum.to_string()))
+        let terms: Vec<String> = iter::once((self.0.sum.clone() / x_val).to_string())
+            .chain(self.0.variables.iter().filter_map(|(name, val)| {
+                (name != self.1).then_some(format!("{}{name}", val / x_val))
+            }))
             .collect();
 
-        write!(f, "{x_val}{} = {}", self.1, terms.join(" + "))
+        write!(f, "{} = {}", self.1, terms.join(" - "))
     }
 }
