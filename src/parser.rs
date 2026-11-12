@@ -251,9 +251,11 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
 
 #[cfg(test)]
 mod test {
-    use std::collections::VecDeque;
+    use std::{collections::VecDeque, str::FromStr};
 
-    use crate::parser::{Token, tokenize};
+    use num::{BigInt, BigRational, FromPrimitive};
+
+use crate::{Equation, parser::{Token, tokenize}};
 
     #[test]
     fn test_brackets_recursive_empty() {
@@ -283,5 +285,69 @@ mod test {
         next_layer(&mut tokens, 4);
 
         assert!(tokens.is_empty(), "Last layer is non empty")
+    }
+
+    // Covers the basic tokenization contract: a single variable name should come through as one `Var` token and not be split into unrelated pieces.
+    #[test]
+    fn test_tokenize_single_variable() {
+        let tokens = tokenize("x").expect("Variable should tokenize successfully");
+
+        assert_eq!(tokens.len(), 1);
+        assert!(matches!(tokens.front(), Some(Token::Var("x"))));
+    }
+
+    // Covers the arithmetic operator path: a simple `a + b` expression should produce a stable sequence of tokens that preserves both the variable and the plus separator.
+    #[test]
+    fn test_tokenize_basic_addition() {
+        let tokens = tokenize("a + b").expect("Basic addition should tokenize successfully");
+
+        assert_eq!(tokens.len(), 3);
+        assert!(matches!(tokens[0], Token::Var("a")));
+        assert!(matches!(tokens[1], Token::Add));
+        assert!(matches!(tokens[2], Token::Var("b")));
+    }
+
+    // Covers nested grouping: repeated parentheses should create a bracketed token tree instead of flattening all the content into one token stream.
+    #[test]
+    fn test_tokenize_nested_brackets() {
+        let tokens = tokenize("((x + y))").expect("Nested brackets should tokenize successfully");
+
+        assert_eq!(tokens.len(), 1);
+        let Token::Brackets(inner) = tokens.front().expect("Top-level token should be brackets") else {
+            panic!("Expected nested bracket token at the top level")
+        };
+
+        assert_eq!(inner.len(), 1);
+        let Token::Brackets(inner_inner) = inner.front().expect("Inner token should be brackets") else {
+            panic!("Expected second layer of brackets")
+        };
+
+        assert!(matches!(inner_inner.front(), Some(Token::Var("x"))));
+    }
+
+    // Covers slash-form expressions: `6/2` should be treated as a single numeric term, exercising the parser's division handling without needing the full equation logic.
+    #[test]
+    fn test_tokenize_fraction_literal() {
+        let tokens = tokenize("6/2").expect("Fraction literal should tokenize successfully");
+
+        assert_eq!(tokens.len(), 1);
+        assert!(matches!(tokens.front(), Some(Token::Num(_))));
+    }
+
+    // Covers malformed eq strings: missing equals sign should be rejected early so the parser enforces the equation format before it starts interpreting terms.
+    #[test]
+    fn test_parse_requires_equals_sign() {
+        let result = Equation::from_str("x + 2");
+
+        assert!(result.is_err(), "Bare expressions should fail parsing");
+    }
+
+    // Covers the lead-in path for a real equation: a simple linear equation should be parseable and should retain the variable coefficient structure in the resulting model.
+    #[test]
+    fn test_parse_simple_linear_equation() {
+        let equation = Equation::from_str("x + 5 = 12").expect("Simple equation should parse");
+
+        assert!(equation.variables.contains_key("x"));
+        assert!(equation.sum == BigRational::from_integer(12.into()));
     }
 }
