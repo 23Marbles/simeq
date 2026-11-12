@@ -6,6 +6,7 @@ description = "Exact rational linear-system solver and command-line tool"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/23Marbles/simeq"
 exclude = [".vscode/**"]
+readme = "README.md"
 
 [dependencies]
 num = "0.4.3"
