@@ -63,7 +63,10 @@ impl FromStr for Equation {
                     _ => return Err("Expected `-` or `+`".to_string()),
                 };
 
-                while tokens.pop_front_if(|tok| matches!(tok, Token::Sub)).is_some() {
+                while tokens
+                    .pop_front_if(|tok| matches!(tok, Token::Sub))
+                    .is_some()
+                {
                     is_neg = !is_neg
                 }
 
@@ -99,6 +102,7 @@ enum Token<'a> {
     Add,
     Num(BigRational),
     Var(&'a str),
+    Brackets(VecDeque<Token<'a>>),
 }
 
 fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
@@ -140,6 +144,28 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
         let token = match next_char {
             '-' => Token::Sub,
             '+' => Token::Add,
+            '(' => {
+                let mut brackets_depth = 1;
+
+                let end_idx = s[next_pos..]
+                    .char_indices()
+                    .find_map(|(idx, ch)| {
+                        if ch == '(' {
+                            brackets_depth += 1
+                        } else if ch == ')' {
+                            brackets_depth -= 1
+                        }
+
+                        (brackets_depth == 0).then_some(idx + next_pos)
+                    })
+                    .ok_or("Missing closing bracket".to_string())?;
+
+                let vec = tokenize(&s[next_pos..end_idx])?;
+
+                next_pos = end_idx + 1;
+
+                Token::Brackets(vec)
+            }
             d if d.is_ascii_digit() => {
                 let end = s[next_pos..]
                     .find(|ch: char| !(ch.is_ascii_digit()))
@@ -174,11 +200,48 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
 
                 Token::Var(s[start..next_pos].trim())
             }
-            _ => return Err(format!("Unrecognized token start {next_char}")),
+            ch => return Err(format!("Unrecognized token start `{ch}`")),
         };
 
         tokens.push_back(token);
     }
 
     Ok(tokens)
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::VecDeque;
+
+    use crate::parser::{Token, tokenize};
+
+    #[test]
+    fn test_brackets_recursive_empty() {
+        let text = "(((())))";
+
+        let mut tokens = tokenize(text).expect("Valid token stream");
+
+        fn next_layer(tokens: &mut VecDeque<Token<'_>>, nth: usize) {
+            let Token::Brackets(inner) = tokens
+                .pop_front()
+                .expect(&format!("{nth} layer should be non empty"))
+            else {
+                panic!("inner was not brackets, layer {}", nth)
+            };
+
+            assert!(
+                tokens.is_empty(),
+                "{nth} layer had more than one token in inner"
+            );
+
+            *tokens = inner
+        }
+
+        next_layer(&mut tokens, 1);
+        next_layer(&mut tokens, 2);
+        next_layer(&mut tokens, 3);
+        next_layer(&mut tokens, 4);
+
+        assert!(tokens.is_empty(), "Last layer is non empty")
+    }
 }
