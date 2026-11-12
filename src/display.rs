@@ -212,7 +212,11 @@ impl Display for AugmentedMatrix {
 
 impl Display for LinearSystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        DisplayMatrix::from(self.clone()).fmt(f)
+        if self.variables().is_empty() {
+            DisplayMatrix::from(self.augmented_matrix().clone()).fmt(f)
+        } else {
+            DisplayMatrix::from(self.clone()).fmt(f)
+        }
     }
 }
 
@@ -306,14 +310,14 @@ impl Display for Solution {
                     write!(f, "Free Variables")?;
 
                     for name in free_variables {
-                        write!(f, "\nname")?;
+                        write!(f, "\n{name}")?;
                     }
 
                     has_started = true;
                 }
 
                 if !has_started {
-                    write!(f, "Empty infinte solution, this is a bug. Oops.")?;
+                    write!(f, "Empty infinite solution, this is a bug. Oops.")?;
                 }
 
                 Ok(())
