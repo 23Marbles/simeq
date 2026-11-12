@@ -4,8 +4,6 @@ use std::{
     ops::Range,
 };
 
-use num::{BigRational, One};
-
 use crate::{
     Equation,
     solver::{LinearSystem, Solution, augmented_matrix::AugmentedMatrix},
