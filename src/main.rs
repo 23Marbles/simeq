@@ -1,19 +1,6 @@
-use std::{collections::HashMap, io::stdin, str::FromStr};
+use std::{io::stdin, str::FromStr};
 
-use num::BigRational;
-
-use crate::solver::LinearSystem;
-
-mod display;
-mod parser;
-mod solver;
-
-/// x + y + z = sum
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
-struct Equation {
-    variables: HashMap<String, BigRational>,
-    sum: BigRational,
-}
+use simeq::{Equation, solver::LinearSystem};
 
 fn main() {
     let mut equations = Vec::new();
