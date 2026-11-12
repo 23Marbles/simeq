@@ -140,6 +140,10 @@ impl AugmentedMatrix {
 /// Gaussian elimination
 impl AugmentedMatrix {
     pub fn row_echelon_form(&mut self) {
+        if self.height == 0 {
+            return;
+        }
+
         let mut current_pivot_y = 0;
 
         for x in 0..self.width {
@@ -213,5 +217,24 @@ impl AugmentedMatrix {
         }
 
         pivot_columns
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AugmentedMatrix;
+
+    #[test]
+    fn row_echelon_form_handles_columns_without_rows() {
+        let mut matrix = AugmentedMatrix::default();
+        matrix.add_column();
+
+        matrix.row_echelon_form();
+        assert!(matrix.reduced_row_echelon_form().is_empty());
+
+        assert_eq!(matrix.height(), 0);
+        assert_eq!(matrix.width(), 1);
+        assert!(matrix.rows().is_empty());
+        assert!(matrix.augment().is_empty());
     }
 }

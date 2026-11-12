@@ -4,6 +4,8 @@ use std::{
     ops::Range,
 };
 
+use num::Zero;
+
 use crate::{
     Equation,
     solver::{LinearSystem, Solution, augmented_matrix::AugmentedMatrix},
@@ -318,9 +320,9 @@ impl Equation {
         &'a self,
         var_name: impl AsRef<str>,
     ) -> Option<EquationInTermsOfX<'a>> {
-        let var_name = self.variables.get_key_value(var_name.as_ref())?.0;
+        let (var_name, coefficient) = self.variables.get_key_value(var_name.as_ref())?;
 
-        Some(EquationInTermsOfX(self, var_name))
+        (!coefficient.is_zero()).then_some(EquationInTermsOfX(self, var_name))
     }
 }
 
@@ -341,5 +343,19 @@ impl Display for EquationInTermsOfX<'_> {
             .collect();
 
         write!(f, "{} = {}", self.1, terms.join(" - "))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::Equation;
+
+    #[test]
+    fn display_in_terms_of_zero_coefficient_returns_none() {
+        let equation = Equation::from_str("x - x = 0").unwrap();
+
+        assert!(equation.display_in_terms_of_x("x").is_none());
     }
 }

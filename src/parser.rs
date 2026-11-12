@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use num::BigRational;
+use num::{BigRational, Zero};
 
 use crate::Equation;
 
@@ -163,6 +163,10 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
                     let denom = BigRational::from_str(s[start..next_pos].trim())
                         .map_err(|e| e.to_string())?;
 
+                    if denom.is_zero() {
+                        return Err("Denominator cannot be zero".to_string());
+                    }
+
                     num /= denom
                 };
 
@@ -184,4 +188,18 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
     }
 
     Ok(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use crate::Equation;
+
+    #[test]
+    fn zero_fraction_denominator_returns_parse_error() {
+        let result = Equation::from_str("x = 1/0");
+
+        assert!(result.is_err());
+    }
 }
