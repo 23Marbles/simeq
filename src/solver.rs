@@ -42,7 +42,10 @@ impl LinearSystem {
                 row.push(eq_variables.remove(name).unwrap_or(BigRational::ZERO));
             }
 
-            for (name, value) in eq_variables.into_iter() {
+            let mut sorted_variables: Vec<_> = eq_variables.into_iter().collect();
+            sorted_variables.sort_by(|(v1, _), (v2, _)| v1.cmp(v2));
+
+            for (name, value) in sorted_variables.into_iter() {
                 variables.push(name);
 
                 augmented_matrix.add_column();
