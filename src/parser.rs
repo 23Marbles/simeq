@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use num::BigRational;
+use num::{BigRational, FromPrimitive};
 
 use crate::Equation;
 
@@ -193,17 +193,23 @@ fn tokenize<'a>(s: &'a str) -> Result<VecDeque<Token<'a>>, String> {
                 let mut num =
                     BigRational::from_str(s[start..*next_pos].trim()).map_err(|e| e.to_string())?;
 
-                if let Some(('/', start)) = find_next_char(s, *next_pos) {
+                if let Some(('.', start)) = find_next_char(s, *next_pos) {
                     let end = s[start..]
                         .find(|ch: char| !(ch.is_ascii_digit()))
                         .map_or(s.len(), |i| i + start);
 
                     *next_pos = end;
 
-                    let denom = BigRational::from_str(s[start..*next_pos].trim())
-                        .map_err(|e| e.to_string())?;
+                    let s = s[start..*next_pos].trim();
 
-                    num /= denom
+                    if s.is_empty() {
+                        return Err("Character `.` should be followd by a decimal part".to_string());
+                    }
+
+                    let decimal = BigRational::from_str(s)
+                        .map_err(|e| e.to_string())? / BigRational::from_usize(s.len()).expect("usize can fit inside a bigint");
+
+                    num += decimal
                 };
 
                 Token::Num(num)
