@@ -71,6 +71,14 @@ impl AugmentedMatrix {
     }
 
     pub fn add_row(&mut self, row: Vec<BigRational>, sum: BigRational) {
+        assert_eq!(
+            row.len(),
+            self.width,
+            "row is the wrong size for augmented matrix: width is  `{}` but the length is `{}`",
+            self.width,
+            row.len()
+        );
+
         self.height += 1;
 
         self.rows.push(row);
