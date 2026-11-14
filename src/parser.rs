@@ -8,7 +8,19 @@ impl FromStr for Equation {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let _terms = str_to_terms(s)?;
+        let _terms = {
+            let mut s = s;
+
+            let mut terms = VecDeque::new();
+
+            while !s.is_empty() {
+                let term = Term::greedy_parse(&mut s)?;
+
+                terms.push_back(term);
+            }
+
+            terms
+        };
 
         todo!("Update Equation::FromStr")
     }
@@ -24,13 +36,9 @@ enum TermKind<'a> {
     Brackets(VecDeque<Term<'a>>),
 }
 
-impl FromStr for TermKind<'_> {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let _ = s;
-
-        todo!("TermKind::FromStr impl")
+impl<'a> TermKind<'a> {
+    fn greedy_parse(s: &mut &'a str) -> Result<Self, String> {
+        todo!()
     }
 }
 
@@ -39,30 +47,19 @@ struct Term<'a> {
     kind: TermKind<'a>,
 }
 
-impl FromStr for Term<'_> {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let _ = s;
-
-        todo!("Term::FromStr impl")
+impl<'a> Term<'a> {
+    fn greedy_parse(s: &mut &'a str) -> Result<Self, String> {
+        todo!()
     }
-}
-
-fn str_to_terms(s: &str) -> Result<VecDeque<Term<'_>>, String> {
-    todo!("Find all the terms for a str")
 }
 
 #[cfg(test)]
 mod test {
-    use std::{collections::VecDeque, str::FromStr};
+    use std::str::FromStr;
 
-    use num::{BigInt, BigRational, FromPrimitive};
+    use num::{BigRational};
 
-    use crate::{
-        Equation,
-        parser::{Token, tokenize},
-    };
+    use crate::Equation;
 
     // Covers malformed eq strings: missing equals sign should be rejected early so the parser enforces the equation format before it starts interpreting terms.
     #[test]
