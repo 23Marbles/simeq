@@ -49,7 +49,41 @@ struct Term<'a> {
 
 impl<'a> Term<'a> {
     fn greedy_parse(s: &mut &'a str) -> Result<Self, String> {
-        todo!()
+        let Some((mut ch, new_s)) = take_next_char(s) else {
+            return Err("Did not expect a fully whitespace / empty string".to_string());
+        };
+
+        *s = new_s;
+
+        if ch == '+' {
+            let Some((new_ch, new_s)) = take_next_char(s) else {
+                return Err("Expected a character after `+`".to_string());
+            };
+
+            *s = new_s;
+
+            ch = new_ch;
+        };
+
+        let mut is_neg = false;
+
+        while ch == '-' {
+            is_neg = !is_neg;
+
+            let Some((new_ch, new_s)) = take_next_char(s) else {
+                return Err("Expected a character after `-`".to_string());
+            };
+
+            *s = new_s;
+
+            ch = new_ch;
+        }
+
+        let constant = ch.is_ascii_digit().then_some(parse_big_rational(s)?);
+
+        let kind = TermKind::greedy_parse(s)?;
+
+        Ok(Self { constant, kind })
     }
 }
 
