@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, str::FromStr};
 
-use num::BigRational;
+use num::{BigInt, BigRational, FromPrimitive};
 
 use crate::Equation;
 
@@ -43,7 +43,7 @@ impl<'a> TermKind<'a> {
 }
 
 struct Term<'a> {
-    constant: BigRational,
+    constant: Option<BigRational>,
     kind: TermKind<'a>,
 }
 
@@ -53,11 +53,80 @@ impl<'a> Term<'a> {
     }
 }
 
+fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
+    let range_end = s
+        .char_indices()
+        .find_map(|(i, ch)| (!ch.is_ascii_digit()).then_some(i))
+        .unwrap_or(s.len());
+
+    let (num_str, remainder) = s.split_at(range_end);
+    *s = remainder;
+
+    let decimal_str = (s.chars().next() == Some('.')).then_some({
+        *s = &s[1..];
+
+        let range_end = s
+            .char_indices()
+            .find_map(|(i, ch)| (!ch.is_ascii_digit()).then_some(i))
+            .unwrap_or(s.len());
+
+        let (num_str, remainder) = s.split_at(range_end);
+        *s = remainder;
+        num_str
+    });
+
+    let mut num = BigRational::from_str(num_str).map_err(|e| e.to_string())?;
+
+    if let Some(dec_str) = decimal_str {
+        let numer = BigInt::from_str(dec_str).map_err(|e| e.to_string())?;
+        let denom = BigInt::from_usize(dec_str.len()).expect("Bigint can alway hold usize values") * 10;
+
+        num += BigRational::new(numer, denom);
+    };
+
+    let mut chars_iter = s.chars();
+
+    match (chars_iter.next(), chars_iter.next()) {
+        (None, Some(_)) => unreachable!("An iterator cannot return Some after returning None"),
+        (Some('/'), None) => return Err("Expect a character atfer `/`".to_string()),
+        (Some('/'), Some(d)) if d.is_ascii_digit() => {
+            *s = &s[1..];
+
+            num /= parse_big_rational(s)?;
+        },
+        _ => (),
+    }
+
+    Ok(num)
+}
+
+fn take_next_char(mut s: &str) -> Option<(char, &str)> {
+    let boundary = s.ceil_char_boundary(1);
+    let (before, after) = s.split_at(boundary);
+    let mut ch = char::from_str(before).expect("Is a single char");
+    s = after;
+
+    while ch.is_whitespace() {
+        if s.is_empty() {
+            return None;
+        }
+
+        let boundary = s.ceil_char_boundary(1);
+        let (before, after) = s.split_at(boundary);
+
+        ch = char::from_str(before).expect("Is a single char");
+
+        s = after
+    }
+
+    Some((ch, s))
+}
+
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
 
-    use num::{BigRational};
+    use num::BigRational;
 
     use crate::Equation;
 
