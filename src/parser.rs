@@ -8,19 +8,7 @@ impl FromStr for Equation {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let _terms = {
-            let mut s = s;
-
-            let mut terms = VecDeque::new();
-
-            while !s.is_empty() {
-                let term = Term::greedy_parse(&mut s)?;
-
-                terms.push_back(term);
-            }
-
-            terms
-        };
+        let terms = find_terms(s)?;
 
         todo!("Update Equation::FromStr")
     }
@@ -38,8 +26,72 @@ enum TermKind<'a> {
 
 impl<'a> TermKind<'a> {
     fn greedy_parse(s: &mut &'a str) -> Result<Self, String> {
-        todo!()
+        let Some((ch, new_s)) = take_next_char(s) else {
+            return Ok(Self::None);
+        };
+
+        let kind = match ch {
+            '/' => {
+                return Err("Ecpected item before `/`".to_string());
+            }
+            d if d.is_ascii_digit() => {
+                panic!("All digits should be handled before reaching this function")
+            }
+            '(' => {
+                let mut bracket_depth: usize = 1;
+
+                let Some(end_idx) = new_s.char_indices().find_map(|(idx, c)| {
+                    if c == '(' {
+                        bracket_depth += 1;
+                    } else if c == ')' {
+                        bracket_depth -= 1;
+                    };
+
+                    (bracket_depth == 0).then_some(idx)
+                }) else {
+                    return Err("Unterminated `(`".to_string());
+                };
+
+                *s = new_s;
+
+                let bracket_terms = find_terms(&s[..end_idx])?;
+
+                *s = &s[end_idx + 1..];
+
+                Self::Brackets(bracket_terms)
+            }
+            a if a.is_alphabetic() => {
+                let end_idx = s.find(|ch: char| !ch.is_alphabetic()).unwrap_or(s.len());
+
+                let (name, residual) = s.split_at(end_idx);
+
+                *s = residual;
+
+                Self::Var(name)
+            }
+            _ => return Ok(Self::None),
+        };
+
+        if let Some(('/', new_s)) = take_next_char(s) {
+            *s = new_s;
+
+            Ok(Self::Div { numerator: Box::new(kind), denominator: parse_big_rational(s)? })
+        } else {
+            Ok(kind)
+        }
     }
+}
+
+fn find_terms<'a>(mut s: &'a str) -> Result<VecDeque<Term<'a>>, String> {
+    let mut terms = VecDeque::new();
+
+    while !s.is_empty() {
+        let term = Term::greedy_parse(&mut s)?;
+
+        terms.push_back(term);
+    }
+
+    Ok(terms)
 }
 
 struct Term<'a> {
@@ -113,7 +165,8 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
 
     if let Some(dec_str) = decimal_str {
         let numer = BigInt::from_str(dec_str).map_err(|e| e.to_string())?;
-        let denom = BigInt::from_usize(dec_str.len()).expect("Bigint can alway hold usize values") * 10;
+        let denom =
+            BigInt::from_usize(dec_str.len()).expect("Bigint can alway hold usize values") * 10;
 
         num += BigRational::new(numer, denom);
     };
@@ -127,7 +180,7 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
             *s = &s[1..];
 
             num /= parse_big_rational(s)?;
-        },
+        }
         _ => (),
     }
 
