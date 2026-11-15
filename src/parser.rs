@@ -135,15 +135,21 @@ impl<'a> TermKind<'a> {
                 Self::Brackets(bracket_terms)
             }
             a if a.is_alphabetic() => {
-                let end_idx = s.find(|ch: char| !ch.is_alphabetic()).unwrap_or(s.len());
+                let name_start = s.len() - new_s.len() - a.len_utf8();
+                let name_tail_len = new_s
+                    .char_indices()
+                    .find_map(|(i, ch)| (!ch.is_alphabetic()).then_some(i))
+                    .unwrap_or(new_s.len());
+                let name_end = s.len() - new_s.len() + name_tail_len;
 
-                let (name, residual) = s.split_at(end_idx);
+                let (prefix, residual) = s.split_at(name_end);
 
                 *s = residual;
 
-                Self::Var(name)
+                Self::Var(&prefix[name_start..])
             }
-            _ => return Ok(Self::None),
+            '+' | '-' | ')' => return Ok(Self::None),
+            ch => return Err(format!("Unexpected char {ch}")),
         };
 
         if let Some(('/', new_s)) = take_next_char(s) {
@@ -162,8 +168,17 @@ impl<'a> TermKind<'a> {
 fn find_terms<'a>(mut s: &'a str) -> Result<Vec<Term<'a>>, String> {
     let mut terms = Vec::new();
 
-    while !s.is_empty() {
-        let term = Term::greedy_parse(&mut s)?;
+    loop {
+        let previous_len = s.len();
+        let term = match Term::greedy_parse(&mut s) {
+            Ok(t) => t,
+            Err(s) if s == "Did not expect a fully whitespace / empty string" => break,
+            Err(e) => return Err(e),
+        };
+
+        if s.len() == previous_len {
+            return Err("Parser did not consume input".to_string());
+        }
 
         terms.push(term);
     }
@@ -182,9 +197,9 @@ impl<'a> Term<'a> {
             return Err("Did not expect a fully whitespace / empty string".to_string());
         };
 
-        *s = new_s;
-
         if ch == '+' {
+            *s = new_s;
+
             let Some((new_ch, new_s)) = take_next_char(s) else {
                 return Err("Expected a character after `+`".to_string());
             };
@@ -195,6 +210,10 @@ impl<'a> Term<'a> {
         };
 
         let mut is_neg = false;
+
+        if ch == '-' {
+            *s = new_s;
+        }
 
         while ch == '-' {
             is_neg = !is_neg;
@@ -239,7 +258,7 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
 
         let (num_str, remainder) = s.split_at(range_end);
         *s = remainder;
-        
+
         Some(num_str)
     } else {
         None
@@ -272,6 +291,10 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
 }
 
 fn take_next_char(mut s: &str) -> Option<(char, &str)> {
+    if s.is_empty() {
+        return None;
+    }
+
     let boundary = s.ceil_char_boundary(1);
     let (before, after) = s.split_at(boundary);
     let mut ch = char::from_str(before).expect("Is a single char");
