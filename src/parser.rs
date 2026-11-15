@@ -294,6 +294,20 @@ mod test {
 
     use crate::Equation;
 
+    fn rational(numerator: i64, denominator: i64) -> BigRational {
+        BigRational::new(numerator.into(), denominator.into())
+    }
+
+    fn expected_equation(variables: &[(&str, BigRational)], sum: BigRational) -> Equation {
+        Equation {
+            variables: variables
+                .iter()
+                .map(|(name, coefficient)| (name.to_string(), coefficient.clone()))
+                .collect(),
+            sum,
+        }
+    }
+
     // Covers malformed eq strings: missing equals sign should be rejected early so the parser enforces the equation format before it starts interpreting terms.
     #[test]
     fn test_parse_requires_equals_sign() {
@@ -309,5 +323,74 @@ mod test {
 
         assert!(equation.variables.contains_key("x"));
         assert!(equation.sum == BigRational::from_integer(12.into()));
+    }
+
+    #[test]
+    fn test_parse_variables_on_both_sides() {
+        let parsed = Equation::from_str("x = y").expect("Variable equation should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(
+                &[("x", BigRational::ONE), ("y", -BigRational::ONE)],
+                BigRational::ZERO,
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_signed_coefficients_and_decimals() {
+        let parsed = Equation::from_str("-2x + 1.25y = -3.5")
+            .expect("Signed coefficients and decimals should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(
+                &[("x", rational(-2, 1)), ("y", rational(5, 4))],
+                rational(-7, 2),
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_division_on_both_sides() {
+        let parsed = Equation::from_str("x/2 = y/4")
+            .expect("Variable terms divided by constants should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(
+                &[("x", rational(1, 2)), ("y", rational(-1, 4))],
+                BigRational::ZERO,
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_parenthesized_and_nested_terms() {
+        let parsed = Equation::from_str("2(x + 3(y - 1)) = (z + 4)")
+            .expect("Parenthesized terms should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(
+                &[
+                    ("x", rational(2, 1)),
+                    ("y", rational(6, 1)),
+                    ("z", rational(-1, 1)),
+                ],
+                rational(10, 1),
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_rejects_unterminated_parentheses() {
+        assert!(Equation::from_str("x = (y + 1").is_err());
+    }
+
+    #[test]
+    fn test_parse_rejects_slash_without_denominator() {
+        assert!(Equation::from_str("x/ = 1").is_err());
     }
 }
