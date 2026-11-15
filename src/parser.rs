@@ -208,7 +208,11 @@ impl<'a> Term<'a> {
             ch = new_ch;
         }
 
-        let constant = ch.is_ascii_digit().then_some(parse_big_rational(s)?);
+        let constant = if ch.is_ascii_digit() {
+            Some(parse_big_rational(s)?)
+        } else {
+            None
+        };
 
         let kind = TermKind::greedy_parse(s)?;
 
@@ -225,7 +229,7 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
     let (num_str, remainder) = s.split_at(range_end);
     *s = remainder;
 
-    let decimal_str = (s.chars().next() == Some('.')).then_some({
+    let decimal_str = if s.chars().next() == Some('.') {
         *s = &s[1..];
 
         let range_end = s
@@ -235,8 +239,11 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
 
         let (num_str, remainder) = s.split_at(range_end);
         *s = remainder;
-        num_str
-    });
+        
+        Some(num_str)
+    } else {
+        None
+    };
 
     let mut num = BigRational::from_str(num_str).map_err(|e| e.to_string())?;
 
