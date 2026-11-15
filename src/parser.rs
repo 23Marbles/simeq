@@ -32,7 +32,7 @@ impl<'a> TermKind<'a> {
 
         let kind = match ch {
             '/' => {
-                return Err("Ecpected item before `/`".to_string());
+                return Err("Expected item before `/`".to_string());
             }
             d if d.is_ascii_digit() => {
                 panic!("All digits should be handled before reaching this function")
@@ -75,7 +75,10 @@ impl<'a> TermKind<'a> {
         if let Some(('/', new_s)) = take_next_char(s) {
             *s = new_s;
 
-            Ok(Self::Div { numerator: Box::new(kind), denominator: parse_big_rational(s)? })
+            Ok(Self::Div {
+                numerator: Box::new(kind),
+                denominator: parse_big_rational(s)?,
+            })
         } else {
             Ok(kind)
         }
@@ -175,7 +178,7 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
 
     match (chars_iter.next(), chars_iter.next()) {
         (None, Some(_)) => unreachable!("An iterator cannot return Some after returning None"),
-        (Some('/'), None) => return Err("Expect a character atfer `/`".to_string()),
+        (Some('/'), None) => return Err("Expect a character after `/`".to_string()),
         (Some('/'), Some(d)) if d.is_ascii_digit() => {
             *s = &s[1..];
 
