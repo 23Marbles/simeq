@@ -207,19 +207,26 @@ impl<'a> Term<'a> {
             ch = new_ch;
         };
 
-        let mut is_neg = false;
+        let is_neg = {
+            let mut is_neg = false;
+            let mut s_after_current_minus_sign = new_s;
 
-        while ch == '-' {
-            *s = new_s;
+            while ch == '-' {
+                *s = s_after_current_minus_sign;
 
-            is_neg = !is_neg;
+                is_neg = !is_neg;
 
-            let Some((new_ch, _)) = take_next_char(s) else {
-                return Err("Expected a character after `-`".to_string());
-            };
+                let Some((new_ch, new_s)) = take_next_char(s) else {
+                    return Err("Expected a character after `-`".to_string());
+                };
 
-            ch = new_ch;
-        }
+                s_after_current_minus_sign = new_s;
+
+                ch = new_ch;
+            }
+
+            is_neg
+        };
 
         let constant = if ch.is_ascii_digit() {
             Some({
