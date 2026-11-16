@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use num::{BigInt, BigRational, FromPrimitive, Zero};
+use num::{BigInt, BigRational, FromPrimitive, Zero, pow::Pow};
 
 use crate::Equation;
 
@@ -46,7 +46,7 @@ impl FromStr for Equation {
                         denominator,
                     },
                 ) => {
-                    let constant = standardize_const(multiplier) / denominator;
+                    let constant = multiplier.unwrap_or(BigRational::ONE) / denominator;
 
                     handle_term_kind(Some(constant), *numerator, is_sign_flipped, this);
                 }
@@ -112,6 +112,8 @@ impl<'a> TermKind<'a> {
                 panic!("All digits should be handled before reaching this function")
             }
             '(' => {
+                *s = new_s;
+
                 let mut bracket_depth: usize = 1;
 
                 let Some(end_idx) = new_s.char_indices().find_map(|(idx, c)| {
@@ -126,11 +128,9 @@ impl<'a> TermKind<'a> {
                     return Err("Unterminated `(`".to_string());
                 };
 
-                *s = new_s;
-
                 let bracket_terms = find_terms(&s[..end_idx])?;
 
-                *s = &s[end_idx + 1..];
+                *s = &s[end_idx + ')'.len_utf8()..];
 
                 Self::Brackets(bracket_terms)
             }
@@ -200,42 +200,46 @@ impl<'a> Term<'a> {
         if ch == '+' {
             *s = new_s;
 
-            let Some((new_ch, new_s)) = take_next_char(s) else {
+            let Some((new_ch, _)) = take_next_char(s) else {
                 return Err("Expected a character after `+`".to_string());
             };
-
-            *s = new_s;
 
             ch = new_ch;
         };
 
         let mut is_neg = false;
 
-        if ch == '-' {
-            *s = new_s;
-        }
-
         while ch == '-' {
+            *s = new_s;
+
             is_neg = !is_neg;
 
-            let Some((new_ch, new_s)) = take_next_char(s) else {
+            let Some((new_ch, _)) = take_next_char(s) else {
                 return Err("Expected a character after `-`".to_string());
             };
-
-            *s = new_s;
 
             ch = new_ch;
         }
 
         let constant = if ch.is_ascii_digit() {
-            Some(parse_big_rational(s)?)
+            Some({
+                let num = parse_big_rational(s)?;
+                if is_neg { -num } else { num }
+            })
         } else {
             None
         };
 
         let kind = TermKind::greedy_parse(s)?;
 
-        Ok(Self { constant, kind })
+        Ok(Self {
+            constant: if !matches!(kind, TermKind::None) && is_neg && constant.is_none() {
+                Some(-BigRational::ONE)
+            } else {
+                constant
+            },
+            kind,
+        })
     }
 }
 
@@ -268,8 +272,7 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
 
     if let Some(dec_str) = decimal_str {
         let numer = BigInt::from_str(dec_str).map_err(|e| e.to_string())?;
-        let denom =
-            BigInt::from_usize(dec_str.len()).expect("Bigint can alway hold usize values") * 10;
+        let denom = BigInt::from_u32(10).unwrap().pow(dec_str.len() as u32);
 
         num += BigRational::new(numer, denom);
     };
@@ -290,30 +293,31 @@ fn parse_big_rational(s: &mut &str) -> Result<BigRational, String> {
     Ok(num)
 }
 
-fn take_next_char(mut s: &str) -> Option<(char, &str)> {
+fn take_next_char<'a>(s: &mut &'a str) -> Option<(char, &'a str)> {
     if s.is_empty() {
         return None;
     }
 
     let boundary = s.ceil_char_boundary(1);
-    let (before, after) = s.split_at(boundary);
+    let (before, mut after) = s.split_at(boundary);
     let mut ch = char::from_str(before).expect("Is a single char");
-    s = after;
 
     while ch.is_whitespace() {
+        *s = after;
+
         if s.is_empty() {
             return None;
         }
 
         let boundary = s.ceil_char_boundary(1);
-        let (before, after) = s.split_at(boundary);
+        let (before, inner_after) = s.split_at(boundary);
 
         ch = char::from_str(before).expect("Is a single char");
 
-        s = after
+        after = inner_after
     }
 
-    Some((ch, s))
+    Some((ch, after))
 }
 
 #[cfg(test)]
@@ -352,7 +356,7 @@ mod test {
         let equation = Equation::from_str("x + 5 = 12").expect("Simple equation should parse");
 
         assert!(equation.variables.contains_key("x"));
-        assert!(equation.sum == BigRational::from_integer(12.into()));
+        assert!(equation.sum == BigRational::from_integer(7.into()));
     }
 
     #[test]
@@ -365,6 +369,55 @@ mod test {
                 &[("x", BigRational::ONE), ("y", -BigRational::ONE)],
                 BigRational::ZERO,
             )
+        );
+    }
+
+    #[test]
+    fn test_parse_negative_variable_without_coefficient() {
+        let parsed = Equation::from_str("-x = 0")
+            .expect("A negative variable without an explicit coefficient should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(&[("x", -BigRational::ONE)], BigRational::ZERO)
+        );
+    }
+
+    #[test]
+    fn test_parse_repeated_variables_and_constant_terms() {
+        let parsed = Equation::from_str("2x + 3x - 1.25 = 4")
+            .expect("Repeated variables and constants should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(&[("x", rational(5, 1))], rational(21, 4))
+        );
+    }
+
+    #[test]
+    fn test_parse_repeated_unary_signs() {
+        let positive = Equation::from_str("--x = 0")
+            .expect("Two unary minus signs should produce a positive variable");
+        let negative = Equation::from_str("---x = 0")
+            .expect("Three unary minus signs should produce a negative variable");
+
+        assert_eq!(
+            positive,
+            expected_equation(&[("x", BigRational::ONE)], BigRational::ZERO)
+        );
+        assert_eq!(
+            negative,
+            expected_equation(&[("x", -BigRational::ONE)], BigRational::ZERO)
+        );
+    }
+
+    #[test]
+    fn test_parse_decimal_denominator() {
+        let parsed = Equation::from_str("x/0.25 = 1").expect("Decimal denominators should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(&[("x", rational(4, 1))], BigRational::ONE)
         );
     }
 
@@ -422,5 +475,13 @@ mod test {
     #[test]
     fn test_parse_rejects_slash_without_denominator() {
         assert!(Equation::from_str("x/ = 1").is_err());
+    }
+
+    #[test]
+    fn test_parse_rejects_unexpected_and_unconsumed_tokens() {
+        assert!(Equation::from_str("x = @").is_err());
+        assert!(Equation::from_str("x = /y").is_err());
+        assert!(Equation::from_str("x = )").is_err());
+        assert!(Equation::from_str("x + = 1").is_err());
     }
 }
