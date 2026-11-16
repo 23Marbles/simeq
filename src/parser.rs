@@ -49,10 +49,8 @@ impl FromStr for Equation {
                     if denominator.is_zero() {
                         return Err("Cannot divide by zero".to_string());
                     }
-                    
-                    let constant = multiplier
-                        .unwrap_or(BigRational::ONE)
-                        /denominator;
+
+                    let constant = multiplier.unwrap_or(BigRational::ONE) / denominator;
 
                     handle_term_kind(Some(constant), *numerator, is_sign_flipped, this)?;
                 }
@@ -113,9 +111,7 @@ impl<'a> TermKind<'a> {
         };
 
         let kind = match ch {
-            '/' => {
-                return Err("Expected item before `/`".to_string());
-            }
+            '/' => Self::None,
             d if d.is_ascii_digit() => {
                 panic!("All digits should be handled before reaching this function")
             }
@@ -163,6 +159,9 @@ impl<'a> TermKind<'a> {
         if let Some(('/', new_s)) = take_next_char(s) {
             *s = new_s;
 
+            // Skip whitespace
+            let _ = take_next_char(s);
+
             Ok(Self::Div {
                 numerator: Box::new(kind),
                 denominator: parse_big_rational(s)?,
@@ -201,17 +200,18 @@ struct Term<'a> {
 
 impl<'a> Term<'a> {
     fn greedy_parse(s: &mut &'a str) -> Result<Self, String> {
-        let Some((mut ch, new_s)) = take_next_char(s) else {
+        let Some((mut ch, mut new_s)) = take_next_char(s) else {
             return Err("Did not expect a fully whitespace / empty string".to_string());
         };
 
         if ch == '+' {
             *s = new_s;
 
-            let Some((new_ch, _)) = take_next_char(s) else {
+            let Some((new_ch, after_new_ch)) = take_next_char(s) else {
                 return Err("Expected a character after `+`".to_string());
             };
 
+            new_s = after_new_ch;
             ch = new_ch;
         };
 
@@ -224,11 +224,11 @@ impl<'a> Term<'a> {
 
                 is_neg = !is_neg;
 
-                let Some((new_ch, new_s)) = take_next_char(s) else {
+                let Some((new_ch, after_new_ch)) = take_next_char(s) else {
                     return Err("Expected a character after `-`".to_string());
                 };
 
-                s_after_current_minus_sign = new_s;
+                s_after_current_minus_sign = after_new_ch;
 
                 ch = new_ch;
             }
@@ -462,6 +462,52 @@ mod test {
                 BigRational::ZERO,
             )
         );
+    }
+
+    #[test]
+    fn test_parse_mixed_plus_minus_signs() {
+        let parsed =
+            Equation::from_str("x + -y = 0").expect("A minus sign following a plus should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(
+                &[("x", BigRational::ONE), ("y", -BigRational::ONE)],
+                BigRational::ZERO,
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_variable_division_with_whitespace() {
+        let parsed = Equation::from_str("x / 2 = 1")
+            .expect("Whitespace around variable division should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(&[("x", rational(1, 2))], BigRational::ONE)
+        );
+    }
+
+    #[test]
+    fn test_parse_constant_division_with_whitespace() {
+        let parsed = Equation::from_str("x = 1 / 2")
+            .expect("Whitespace around constant division should parse");
+
+        assert_eq!(
+            parsed,
+            expected_equation(&[("x", BigRational::ONE)], rational(1, 2))
+        );
+    }
+
+    #[test]
+    fn test_parse_rejects_zero_denominators() {
+        for input in ["x/0 = 1", "x/0.0 = 1"] {
+            assert!(
+                Equation::from_str(input).is_err(),
+                "Zero denominator should be rejected: {input}"
+            );
+        }
     }
 
     #[test]
