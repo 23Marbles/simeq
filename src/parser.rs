@@ -20,7 +20,7 @@ impl FromStr for Equation {
             kind: TermKind<'_>,
             is_sign_flipped: bool,
             this: &mut Equation,
-        ) {
+        ) -> Result<(), String> {
             let standardize_const = |constant: Option<BigRational>| {
                 let constant = constant.unwrap_or(BigRational::ONE);
 
@@ -46,9 +46,15 @@ impl FromStr for Equation {
                         denominator,
                     },
                 ) => {
-                    let constant = multiplier.unwrap_or(BigRational::ONE) / denominator;
+                    if denominator.is_zero() {
+                        return Err("Cannot divide by zero".to_string());
+                    }
+                    
+                    let constant = multiplier
+                        .unwrap_or(BigRational::ONE)
+                        /denominator;
 
-                    handle_term_kind(Some(constant), *numerator, is_sign_flipped, this);
+                    handle_term_kind(Some(constant), *numerator, is_sign_flipped, this)?;
                 }
                 (multiplier, TermKind::Brackets(terms)) => {
                     let standardized_multiplier = standardize_const(multiplier);
@@ -69,19 +75,21 @@ impl FromStr for Equation {
                                 term.kind,
                                 is_sign_flipped,
                                 this,
-                            );
+                            )?;
                         }
                     }
                 }
             };
+
+            Ok(())
         }
 
         for term in left_terms {
-            handle_term_kind(term.constant, term.kind, false, &mut me);
+            handle_term_kind(term.constant, term.kind, false, &mut me)?;
         }
 
         for term in right_terms {
-            handle_term_kind(term.constant, term.kind, true, &mut me);
+            handle_term_kind(term.constant, term.kind, true, &mut me)?;
         }
 
         Ok(me)
